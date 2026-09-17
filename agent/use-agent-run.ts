@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getScenario } from "@/agent/scenarios";
+import { executeTaskTool } from "@/agent/task-execution";
+import { inferMemoryFromPrompt } from "@/agent/memory-planning";
+import { memoryRepository, upsertInferredMemory } from "@/data/persistent-store";
 import type { AgentScenario, Approval, ChatMessage, PlanStep, ToolActivity } from "@/types/agent";
 
 const STEP_DELAY = 720;
@@ -23,10 +26,16 @@ export function useAgentRun() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
   const runId = useRef(0);
+  const activeRunId = useRef("");
+  const resolvedApprovals = useRef(new Set<string>());
 
   const startRun = useCallback((prompt: string) => {
-    const selected = getScenario(prompt);
     runId.current += 1;
+    activeRunId.current = `run_${Date.now()}_${runId.current}`;
+    resolvedApprovals.current.clear();
+    const inferredMemory = inferMemoryFromPrompt(prompt);
+    if (inferredMemory) upsertInferredMemory(inferredMemory);
+    const selected = getScenario(prompt, memoryRepository.getSnapshot());
     setScenario(selected);
     setSteps(selected.steps.map((step) => ({ ...step, status: "pending" })));
     setActivities([]);
@@ -86,13 +95,34 @@ export function useAgentRun() {
 
   const resolveApproval = useCallback((id: string, status: "approved" | "declined") => {
     const target = approvals.find((approval) => approval.id === id);
-    if (!target || target.status !== "pending") return;
+    if (!target || target.status !== "pending" || resolvedApprovals.current.has(id)) return;
+    resolvedApprovals.current.add(id);
 
     if (status === "approved") {
+      const result = executeTaskTool(target, activeRunId.current);
+      const executedTool = {
+        ...target,
+        output: {
+          ...target.output,
+          persistence: result.outcome,
+          ...(result.taskId ? { task_id: result.taskId } : {}),
+          ...(result.fallback ? { fallback: result.fallback } : {}),
+        },
+      };
       setActivities((activity) => [
         ...activity,
-        { ...target, id: `activity-${target.id}`, timestamp: makeTimestamp(), status: "executed" },
+        { ...executedTool, id: `activity-${target.id}`, timestamp: makeTimestamp(), status: "executed" },
       ]);
+      const fallback = result.fallback;
+      if (fallback) {
+        setScenario((current) => current ? {
+          ...current,
+          trace: {
+            ...current.trace,
+            executionNotes: [...(current.trace.executionNotes ?? []), fallback],
+          },
+        } : current);
+      }
     }
     setApprovals((current) =>
       current.map((approval) => (approval.id === id ? { ...approval, status } : approval)),

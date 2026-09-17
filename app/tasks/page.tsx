@@ -1,6 +1,7 @@
-import { CheckSquare2 } from "lucide-react";
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { TaskWorkspace } from "@/components/tasks/task-workspace";
 
 export default function TasksPage() {
-  return <PlaceholderPage eyebrow="Workspace" title="Tasks" description="Everything FlowPilot has proposed or created." icon={CheckSquare2} items={["Create and edit tasks", "Complete work", "View Agent-created schedule"]} />;
+  return <AppShell><PageHeader eyebrow="Workspace" title="Tasks" description="Everything FlowPilot has created—with source, schedule, and status." /><TaskWorkspace /></AppShell>;
 }

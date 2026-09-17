@@ -45,24 +45,27 @@ export function ChatPanel({
 
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Try an example</span>
-              <span className="text-[10px] text-zinc-400">3 scenarios</span>
+              <span className="text-[10px] text-zinc-400">{demoCases.length} scenarios</span>
             </div>
             <div className="space-y-2">
               {demoCases.map((demo) => (
-                <button
-                  key={demo.id}
-                  type="button"
-                  onClick={() => submit(demo.prompt)}
-                  className="group w-full rounded-xl border border-zinc-200 p-3 text-left transition hover:border-zinc-300 hover:bg-zinc-50"
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="pt-0.5 text-[10px] font-semibold tracking-[0.12em] text-zinc-400">{demo.number}</span>
-                    <div>
-                      <div className="text-xs font-semibold text-zinc-700 group-hover:text-zinc-950">{demo.title}</div>
-                      <p className="mt-1 text-[11px] leading-4 text-zinc-500">{demo.description}</p>
+                <div key={demo.id} className="group overflow-hidden rounded-xl border border-zinc-200 transition hover:border-zinc-300 hover:bg-zinc-50">
+                  <button type="button" onClick={() => submit(demo.prompt)} className="w-full p-3 text-left">
+                    <div className="flex items-start gap-3">
+                      <span className="pt-0.5 text-[10px] font-semibold tracking-[0.12em] text-zinc-400">{demo.number}</span>
+                      <div>
+                        <div className="text-xs font-semibold text-zinc-700 group-hover:text-zinc-950">{demo.title}</div>
+                        <p className="mt-1 text-[11px] leading-4 text-zinc-500">{demo.description}</p>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                  {"followUpPrompt" in demo && (
+                    <div className="flex items-center gap-1.5 border-t border-zinc-100 px-3 py-2">
+                      <button type="button" onClick={() => submit(demo.prompt)} className="rounded-md bg-zinc-100 px-2 py-1 text-[9px] font-semibold text-zinc-600 hover:bg-zinc-200">Step 1 · Teach</button>
+                      <button type="button" onClick={() => submit(demo.followUpPrompt)} className="rounded-md bg-violet/10 px-2 py-1 text-[9px] font-semibold text-violet hover:bg-violet/15">Step 2 · Plan again</button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>

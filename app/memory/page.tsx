@@ -1,6 +1,7 @@
-import { Brain } from "lucide-react";
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AppShell } from "@/components/layout/app-shell";
+import { PageHeader } from "@/components/layout/page-header";
+import { MemoryWorkspace } from "@/components/memory/memory-workspace";
 
 export default function MemoryPage() {
-  return <PlaceholderPage eyebrow="Context" title="Memory" description="Preferences, goals, and habits that make plans more personal." icon={Brain} items={["User preferences", "Goals and habits", "Recent context"]} />;
+  return <AppShell><PageHeader eyebrow="Context" title="Memory" description="Preferences, constraints, goals, and habits that shape every plan." /><MemoryWorkspace /></AppShell>;
 }

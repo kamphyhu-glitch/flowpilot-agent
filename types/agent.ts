@@ -46,6 +46,16 @@ export type AgentTrace = {
   tools: ToolName[];
   decision: string;
   reasons: string[];
+  memoryInfluences: MemoryInfluence[];
+  executionNotes?: string[];
+};
+
+export type MemoryInfluence = {
+  memoryId: string;
+  content: string;
+  memoryType: "preference" | "goal" | "habit" | "recent_context";
+  mode: "hard_constraint" | "soft_preference" | "context";
+  effect: string;
 };
 
 export type AgentScenario = {
@@ -56,6 +66,12 @@ export type AgentScenario = {
   response: string;
   steps: Omit<PlanStep, "status">[];
   trace: AgentTrace;
+};
+
+export type TaskExecutionResult = {
+  taskId?: string;
+  outcome: "created" | "updated" | "completed" | "no_change";
+  fallback?: string;
 };
 
 export type ChatMessage = {

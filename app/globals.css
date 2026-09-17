@@ -73,3 +73,13 @@ a:focus-visible {
   background: #d5d7dc;
   background-clip: padding-box;
 }
+
+@layer components {
+  .input {
+    @apply h-9 w-full rounded-lg border border-zinc-200 bg-white px-3 text-xs text-zinc-700 outline-none transition placeholder:text-zinc-300 focus:border-violet;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-400;
+  }
+}

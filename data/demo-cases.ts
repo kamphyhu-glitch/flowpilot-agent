@@ -20,4 +20,12 @@ export const demoCases = [
     description: "Re-plan tonight without losing the important work.",
     prompt: "今天有点累，帮我重新安排晚上的任务。",
   },
+  {
+    id: "memory-loop",
+    number: "04",
+    title: "Memory-aware planning",
+    description: "Teach a preference, then plan again without repeating it.",
+    prompt: "我不喜欢日程太满，请记住这个偏好。",
+    followUpPrompt: "根据我的偏好，帮我安排明天的SQL学习和作品集修改。",
+  },
 ] as const;

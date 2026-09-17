@@ -1,6 +1,8 @@
 import { demoCases } from "@/data/demo-cases";
+import { applyMemoryToScenario } from "@/agent/memory-planning";
 import { mockTool } from "@/tools/mock-tools";
 import type { AgentScenario } from "@/types/agent";
+import type { Memory } from "@/types/persistent";
 
 const interview: AgentScenario = {
   id: "interview",
@@ -23,6 +25,7 @@ const interview: AgentScenario = {
     tools: ["Calendar Tool", "Weather Tool", "Route Tool", "Task Tool"],
     decision: "Use two focused morning blocks and leave at 13:10.",
     reasons: ["45 min estimated travel", "35 min rain and arrival buffer", "30 min break between deep-work blocks"],
+    memoryInfluences: [],
   },
 };
 
@@ -46,6 +49,7 @@ const paper: AgentScenario = {
     tools: ["Calendar Tool", "Task Tool"],
     decision: "Plan three paper milestones and adaptive SQL blocks across five days.",
     reasons: ["Tuesday and Thursday are already busy", "Two deep-work blocks per day maximum", "Thursday evening stays open"],
+    memoryInfluences: [],
   },
 };
 
@@ -69,13 +73,60 @@ const recovery: AgentScenario = {
     tools: ["Calendar Tool", "Task Tool"],
     decision: "Do a 25-minute SQL review, then stop; move portfolio work to tomorrow.",
     reasons: ["SQL review has low activation energy", "Portfolio writing needs stronger focus", "An explicit stopping point prevents over-planning"],
+    memoryInfluences: [],
   },
 };
 
-export const scenarios = [interview, paper, recovery];
+const memoryCapture: AgentScenario = {
+  id: "memory-capture",
+  label: "Remember preference",
+  shortLabel: "Learn a preference",
+  prompt: demoCases[3].prompt,
+  response: "I saved this as a soft Preference. I’ll use it to preserve breathing room in future plans, and you can change it anytime in Memory.",
+  steps: [
+    { id: "c-1", title: "Identify preference", description: "Recognize lighter scheduling as a reusable personal preference." },
+    { id: "c-2", title: "Classify memory", description: "Store it as a soft Preference, not a Hard Constraint." },
+    { id: "c-3", title: "Save for future plans", description: "Make the preference available to the next Agent run." },
+  ],
+  trace: {
+    goal: "Remember how the user prefers their schedule to feel.",
+    constraints: [],
+    tools: [],
+    decision: "Save a soft preference for lighter schedules with buffer time.",
+    reasons: ["The user expressed a reusable preference", "The wording is flexible rather than mandatory"],
+    memoryInfluences: [],
+  },
+};
 
-export function getScenario(prompt: string): AgentScenario {
-  if (/论文|paper|每天|daily/i.test(prompt)) return paper;
-  if (/累|晚上|疲|tired|evening/i.test(prompt)) return recovery;
-  return interview;
+const memoryPlan: AgentScenario = {
+  id: "memory-plan",
+  label: "Plan from memory",
+  shortLabel: "Memory-aware day",
+  prompt: demoCases[3].followUpPrompt,
+  response: "I’ll read your saved preferences first, then propose a plan that reflects them without making you repeat yourself.",
+  steps: [
+    { id: "m-1", title: "Read saved memory", description: "Load preferences and constraints before creating the plan." },
+    { id: "m-2", title: "Check tomorrow’s calendar", description: "Find a realistic morning window.", tool: mockTool("get_calendar", { date: "Tomorrow" }, { availability: "09:30–13:00 open", conflicts: "None" }, "Calendar availability checked") },
+    { id: "m-3", title: "Add SQL learning", description: "Create one focused study block.", tool: mockTool("create_task", { title: "SQL Learning", time: "10:00–11:00" }, { task: "Created", time: "10:00–11:00" }, "Create SQL Learning · 10:00–11:00") },
+    { id: "m-4", title: "Add portfolio revision", description: "Schedule the second focus block with memory-aware spacing.", tool: mockTool("create_task", { title: "Portfolio Revision", time: "11:00–12:00" }, { task: "Created", time: "11:00–12:00" }, "Create Portfolio Revision · 11:00–12:00") },
+  ],
+  trace: {
+    goal: "Schedule SQL learning and portfolio revision tomorrow.",
+    constraints: ["Complete both focus blocks before the afternoon"],
+    tools: ["Calendar Tool", "Task Tool"],
+    decision: "Use two morning focus blocks with spacing based on saved preferences.",
+    reasons: ["Morning availability is open", "Both tasks benefit from focused time"],
+    memoryInfluences: [],
+  },
+};
+
+export const scenarios = [interview, paper, recovery, memoryCapture, memoryPlan];
+
+export function getScenario(prompt: string, memories: readonly Memory[] = []): AgentScenario {
+  let selected = interview;
+  if (/不喜欢.*(?:日程|安排).*(?:太满|排满)|记住.*偏好/.test(prompt)) selected = memoryCapture;
+  else if (/作品集|根据我的偏好|portfolio/i.test(prompt)) selected = memoryPlan;
+  else if (/论文|paper|每天|daily/i.test(prompt)) selected = paper;
+  else if (/累|晚上|疲|tired|evening/i.test(prompt)) selected = recovery;
+  return applyMemoryToScenario(selected, memories);
 }
