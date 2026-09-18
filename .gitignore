@@ -6,3 +6,10 @@ out
 *.tsbuildinfo
 .env*
 !.env.example
+coverage/
+.cache/
+.turbo/
+.vercel/
+*.tmp
+*.temp
+*.bak
