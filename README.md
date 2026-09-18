@@ -26,7 +26,7 @@ FlowPilot 围绕以下 Agent 产品问题展开：
 
 ### Live Demo
 
-**Coming Soon**
+[https://flowpilot-agent.vercel.app](https://flowpilot-agent.vercel.app)
 
 ### Portfolio
 
