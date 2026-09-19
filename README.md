@@ -24,13 +24,7 @@ FlowPilot 围绕以下 Agent 产品问题展开：
 
 ## Demo
 
-### Live Demo
-
-[https://flowpilot-agent.vercel.app](https://flowpilot-agent.vercel.app)
-
-### Portfolio
-
-[profound-torrone-507c6b.netlify.app](https://profound-torrone-507c6b.netlify.app/)
+[Live Demo](https://flowpilot-agent.vercel.app) | [Case Study](https://profound-torrone-507c6b.netlify.app/flowpilot/)
 
 ## Product Walkthrough
 
