@@ -5,6 +5,7 @@ import { requestAgentRun } from "@/agent/agent-client";
 import { runDeterministicAgent } from "@/agent/deterministic-adapter";
 import { executeTaskTool } from "@/agent/task-execution";
 import { inferMemoryFromPrompt } from "@/agent/memory-planning";
+import { useModelConnection } from "@/agent/use-model-connection";
 import { memoryRepository, taskRepository, upsertInferredMemory } from "@/data/persistent-store";
 import type {
   AgentRuntime,
@@ -26,6 +27,7 @@ function makeTimestamp() {
 }
 
 export function useAgentRun() {
+  const modelConnection = useModelConnection();
   const [scenario, setScenario] = useState<AgentScenario | null>(null);
   const [steps, setSteps] = useState<PlanStep[]>([]);
   const [activities, setActivities] = useState<ToolActivity[]>([]);
@@ -81,7 +83,7 @@ export function useAgentRun() {
 
     let result;
     try {
-      result = await requestAgentRun(request);
+      result = await requestAgentRun(request, modelConnection.apiKey);
     } catch {
       result = runDeterministicAgent(request, "The live Agent endpoint could not be reached.");
     }
@@ -95,7 +97,7 @@ export function useAgentRun() {
       { id: `${currentRun}-assistant`, role: "assistant", content: result.scenario.response },
     ]);
     setActiveIndex(0);
-  }, []);
+  }, [modelConnection.apiKey]);
 
   useEffect(() => {
     if (!isRunning || !scenario || activeIndex < 0) return;
@@ -193,6 +195,7 @@ export function useAgentRun() {
     messages,
     isRunning,
     progress,
+    modelConnection,
     startRun,
     resolveApproval,
   };

@@ -87,6 +87,7 @@ export type AgentRuntime = {
   provider: "deepseek" | "deterministic";
   model?: string;
   fallbackReason?: string;
+  credentialSource?: "visitor" | "deployment";
 };
 
 export type AgentRunRequest = {

@@ -1,4 +1,5 @@
 import { runDeepSeekAgent } from "@/agent/deepseek-adapter";
+import { DEEPSEEK_KEY_HEADER, resolveDeepSeekCredential } from "@/agent/deepseek-credentials";
 import { runDeterministicAgent } from "@/agent/deterministic-adapter";
 import { parseAgentRunRequest } from "@/agent/runtime-contract";
 
@@ -8,6 +9,7 @@ const MAX_BODY_BYTES = 100_000;
 
 const fallbackMessages: Record<string, string> = {
   missing_api_key: "DeepSeek is not configured on this deployment.",
+  invalid_visitor_key: "The visitor DeepSeek key is invalid. Disconnect it and try again.",
   provider_request_failed: "DeepSeek was unavailable for this run.",
   empty_model_output: "DeepSeek returned an empty response.",
   invalid_model_output: "DeepSeek returned an invalid structured plan.",
@@ -48,17 +50,26 @@ export async function POST(request: Request) {
   const input = parseAgentRunRequest(body);
   if (!input) return Response.json({ error: "Invalid agent run request." }, { status: 400 });
 
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) {
+  const credential = resolveDeepSeekCredential(
+    request.headers.get(DEEPSEEK_KEY_HEADER),
+    process.env.DEEPSEEK_API_KEY,
+  );
+  if (credential.source === "invalid_visitor") {
+    return Response.json(runDeterministicAgent(input, fallbackMessages.invalid_visitor_key));
+  }
+  if (!credential.apiKey) {
     return Response.json(runDeterministicAgent(input, fallbackMessages.missing_api_key));
   }
 
   try {
     const result = await runDeepSeekAgent(input, {
-      apiKey,
+      apiKey: credential.apiKey,
       model: process.env.DEEPSEEK_MODEL,
     });
-    return Response.json(result);
+    return Response.json({
+      ...result,
+      runtime: { ...result.runtime, credentialSource: credential.source },
+    });
   } catch (error) {
     return Response.json(runDeterministicAgent(input, safeFallbackReason(error)));
   }

@@ -52,7 +52,7 @@ FlowPilot 围绕以下 Agent 产品问题展开：
 
 > 我明天下午 3 点在深圳面试，还要学习 SQL，帮我安排一下。
 
-配置 DeepSeek 后，FlowPilot 会通过真实 LLM 理解目标、选择 Mock Tools，并结合工具结果生成结构化计划；未配置 Key 或模型调用失败时，会显式切换到 deterministic fallback。两种模式都会逐步展示状态变化：
+配置 DeepSeek 或由访客通过 `Connect Model` 提供会话级 API Key 后，FlowPilot 会通过真实 LLM 理解目标、选择 Mock Tools，并结合工具结果生成结构化计划；未配置 Key 或模型调用失败时，会显式切换到 deterministic fallback。两种模式都会逐步展示状态变化：
 
 - `pending`
 - `running`
@@ -406,7 +406,7 @@ npm run lint   # Runs: tsc --noEmit
 ✓ Passed
 
 npm test
-✓ 29 deterministic tests passed
+✓ 36 deterministic tests passed
 
 npm run test:llm
 ✓ 1 live DeepSeek API test passed when explicitly enabled
@@ -436,6 +436,8 @@ npm run build
 - Structured plan synthesis and invalid-output rejection
 - Mock Tool allowlisting and approval proposal boundaries
 - Live-provider fallback behavior
+- Session-only visitor credential lifecycle and request-header isolation
+- Visitor credential precedence without deployment-key fallthrough
 
 ## Built-in Demo Scenarios
 
@@ -454,7 +456,7 @@ Memory-aware Planning 是两步 Demo：先告诉 Agent“我不喜欢日程太�
 npm install
 ```
 
-The application works in deterministic fallback mode without an API key. To enable the live DeepSeek path, create `.env.local` from `.env.example` and set the server-only variable:
+The application works in deterministic fallback mode without an API key. Visitors can use `Connect Model` on the Agent page to provide their own DeepSeek key for the current tab session. For a deployment-owned live path, create `.env.local` from `.env.example` and set the server-only variable:
 
 ```text
 DEEPSEEK_API_KEY=your_key_here
@@ -493,7 +495,7 @@ npm start
 FlowPilot 当前是一个 **AI Agent product prototype**，不是生产级 autonomous agent。
 
 - Agent 支持真实 DeepSeek LLM 规划，但未配置 Key、超时或输出校验失败时会切换到 deterministic scenarios；
-- Live 模式会通过服务端 Adapter 将当前目标及经过数量、长度限制的 Memory/Tasks 上下文发送给 DeepSeek；API Key 不会进入浏览器；
+- Live 模式会通过服务端 Adapter 将当前目标及经过数量、长度限制的 Memory/Tasks 上下文发送给 DeepSeek；部署 Key 仅存在于服务端，访客 Key 仅保存在当前标签页的 sessionStorage，并随请求经同源服务端转发；
 - Calendar、Task、Weather 和 Route Tools 均为 Mock Tools；
 - 没有连接真实 Calendar、Weather、Maps 或任务管理服务；
 - Evaluation 使用固定 Case、versioned fixture 和 deterministic evaluator，不是实时运行的 LLM-as-a-Judge；

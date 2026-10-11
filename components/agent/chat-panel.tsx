@@ -5,16 +5,23 @@ import { ArrowUp, Bot, RotateCcw, Sparkles } from "lucide-react";
 import { demoCases } from "@/data/demo-cases";
 import type { AgentRuntime, ChatMessage } from "@/types/agent";
 import { PanelHeading } from "@/components/agent/panel-heading";
+import { ModelConnection } from "@/components/agent/model-connection";
 
 export function ChatPanel({
   messages,
   isRunning,
   runtime,
+  modelConnected,
+  onConnectModel,
+  onDisconnectModel,
   onSubmit,
 }: {
   messages: ChatMessage[];
   isRunning: boolean;
   runtime: AgentRuntime | null;
+  modelConnected: boolean;
+  onConnectModel: (apiKey: string) => boolean;
+  onDisconnectModel: () => void;
   onSubmit: (prompt: string) => void | Promise<void>;
 }) {
   const [input, setInput] = useState("");
@@ -29,7 +36,9 @@ export function ChatPanel({
   const runtimeBadge = !runtime
     ? isRunning
       ? <span className="flex items-center gap-1.5 rounded-full bg-violet/10 px-2 py-1 text-[10px] font-medium text-violet"><span className="h-1.5 w-1.5 animate-soft-pulse rounded-full bg-violet" />Connecting</span>
-      : <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Ready</span>
+      : modelConnected
+        ? <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Connected · DeepSeek</span>
+        : <span className="flex items-center gap-1.5 rounded-full bg-zinc-100 px-2 py-1 text-[10px] font-medium text-zinc-500"><span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />Not Connected</span>
     : runtime.mode === "live"
       ? <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Live · DeepSeek</span>
       : <span title={runtime.fallbackReason} className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2 py-1 text-[10px] font-medium text-amber-700"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Fallback · Deterministic</span>;
@@ -40,6 +49,12 @@ export function ChatPanel({
         eyebrow="Conversation"
         title="What are we working on?"
         meta={runtimeBadge}
+      />
+      <ModelConnection
+        connected={modelConnected}
+        disabled={isRunning}
+        onConnect={onConnectModel}
+        onDisconnect={onDisconnectModel}
       />
 
       <div className="flex-1 overflow-y-auto px-4 py-4">

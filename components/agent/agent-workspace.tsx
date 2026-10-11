@@ -12,7 +12,15 @@ export function AgentWorkspace() {
 
   return (
     <div className="grid items-start gap-4 p-4 md:p-5 xl:grid-cols-[minmax(285px,0.84fr)_minmax(340px,1.05fr)_minmax(290px,0.86fr)]">
-      <ChatPanel messages={agent.messages} isRunning={agent.isRunning} runtime={agent.runtime} onSubmit={agent.startRun} />
+      <ChatPanel
+        messages={agent.messages}
+        isRunning={agent.isRunning}
+        runtime={agent.runtime}
+        modelConnected={agent.modelConnection.isConnected}
+        onConnectModel={agent.modelConnection.connect}
+        onDisconnectModel={agent.modelConnection.disconnect}
+        onSubmit={agent.startRun}
+      />
       <PlanPanel steps={agent.steps} isRunning={agent.isRunning} progress={agent.progress} />
       <div className="space-y-4">
         <ApprovalPanel approvals={agent.approvals} onResolve={agent.resolveApproval} />

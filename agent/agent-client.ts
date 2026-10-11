@@ -1,12 +1,19 @@
 import { isAgentRunResponse } from "@/agent/runtime-contract";
+import { DEEPSEEK_KEY_HEADER } from "@/agent/deepseek-credentials";
 import type { AgentRunRequest, AgentRunResponse } from "@/types/agent";
 
 const CLIENT_TIMEOUT_MS = 25_000;
 
-export async function requestAgentRun(request: AgentRunRequest): Promise<AgentRunResponse> {
-  const response = await fetch("/api/agent/run", {
+export async function requestAgentRun(
+  request: AgentRunRequest,
+  visitorApiKey: string | null = null,
+  fetchImpl: typeof fetch = fetch,
+): Promise<AgentRunResponse> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (visitorApiKey) headers.set(DEEPSEEK_KEY_HEADER, visitorApiKey);
+  const response = await fetchImpl("/api/agent/run", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(request),
     signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS),
   });
