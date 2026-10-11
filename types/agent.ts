@@ -1,3 +1,5 @@
+import type { Memory, Task } from "@/types/persistent";
+
 export type PlanStatus = "pending" | "running" | "completed";
 export type ApprovalStatus = "pending" | "approved" | "declined";
 
@@ -78,4 +80,23 @@ export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+};
+
+export type AgentRuntime = {
+  mode: "live" | "fallback";
+  provider: "deepseek" | "deterministic";
+  model?: string;
+  fallbackReason?: string;
+};
+
+export type AgentRunRequest = {
+  userInput: string;
+  memories: Memory[];
+  tasks: Task[];
+  timezone: string;
+};
+
+export type AgentRunResponse = {
+  scenario: AgentScenario;
+  runtime: AgentRuntime;
 };

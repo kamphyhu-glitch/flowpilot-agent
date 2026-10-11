@@ -1,6 +1,6 @@
 import type { ToolInvocation, ToolName, ToolOperation } from "@/types/agent";
 
-const toolNames: Record<ToolOperation, ToolName> = {
+export const toolNames: Record<ToolOperation, ToolName> = {
   get_calendar: "Calendar Tool",
   create_event: "Calendar Tool",
   reschedule_event: "Calendar Tool",
@@ -11,7 +11,7 @@ const toolNames: Record<ToolOperation, ToolName> = {
   estimate_route: "Route Tool",
 };
 
-const mutatingOperations = new Set<ToolOperation>([
+export const mutatingOperations = new Set<ToolOperation>([
   "create_event",
   "reschedule_event",
   "create_task",
@@ -33,4 +33,8 @@ export function mockTool(
     requiresApproval: mutatingOperations.has(operation),
     summary,
   };
+}
+
+export function isToolOperation(value: string): value is ToolOperation {
+  return value in toolNames;
 }

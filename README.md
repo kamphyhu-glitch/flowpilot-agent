@@ -52,13 +52,13 @@ FlowPilot 围绕以下 Agent 产品问题展开：
 
 > 我明天下午 3 点在深圳面试，还要学习 SQL，帮我安排一下。
 
-FlowPilot 会选择匹配的 deterministic scenario，将目标拆解为一组计划步骤，并逐步展示状态变化：
+配置 DeepSeek 后，FlowPilot 会通过真实 LLM 理解目标、选择 Mock Tools，并结合工具结果生成结构化计划；未配置 Key 或模型调用失败时，会显式切换到 deterministic fallback。两种模式都会逐步展示状态变化：
 
 - `pending`
 - `running`
 - `completed`
 
-页面不会一次性展示最终结果，而是让用户看到理解目标、读取日历、查询天气、估算路线和准备写操作的过程。
+页面不会一次性展示最终结果，而是让用户看到连接模型、读取 Memory、调用工具、验证约束和准备写操作的过程。运行来源会显示为 `Live · DeepSeek` 或 `Fallback · Deterministic`。
 
 ### 2. Mock Tool Use
 
@@ -281,13 +281,17 @@ FlowPilot 将运行时 Agent 闭环和 Evaluation 闭环分开，Evaluation fixt
 ```text
 Runtime Agent flow
 
-User Input
+User Input + Memory + Current Tasks
     ↓
-Deterministic Scenario Selection
+Server Agent Route
     ↓
-Memory Repository Read
+DeepSeek Adapter ── failure ──→ Deterministic Adapter
+    ↓                              ↓
+Function Calling Loop          Scenario Selection
+    ↓                              ↓
+Structured Plan Synthesis ←────────┘
     ↓
-Memory-aware Planning + Time-floor Validation
+Deterministic Memory + Time-floor Validation
     ↓
 Animated Plan Steps
     ↓
@@ -361,6 +365,13 @@ Evaluation fixtures 是独立、只读的数据集，不存入上述 localStorag
 - Typed repository abstraction
 - Browser localStorage
 
+### Model Runtime
+
+- DeepSeek Responses API
+- Function Calling with an allowlisted Mock Tool registry
+- JSON Schema structured plan output
+- Deterministic fallback adapter
+
 ### Quality
 
 - Vitest
@@ -370,8 +381,8 @@ Evaluation fixtures 是独立、只读的数据集，不存入上述 localStorag
 ## Project Structure
 
 ```text
-app/                  # Next.js routes: Agent, Tasks, Memory, Evaluation
-agent/                # Scenario selection, memory planning, task execution
+app/                  # Next.js pages and the server-only Agent API route
+agent/                # LLM adapters, contracts, planning, and task execution
 components/
   agent/              # Planning, approval, tool activity, trace
   tasks/              # Persistent task workspace
@@ -395,7 +406,10 @@ npm run lint   # Runs: tsc --noEmit
 ✓ Passed
 
 npm test
-✓ 21 / 21 tests passed across 5 test files
+✓ 29 deterministic tests passed
+
+npm run test:llm
+✓ 1 live DeepSeek API test passed when explicitly enabled
 
 npm run build
 ✓ Passed
@@ -417,6 +431,11 @@ npm run build
 - Metric aggregation and applicable-metric isolation
 - Failure generation and resolved history
 - Evaluator determinism and input immutability
+- Agent request and response contract validation
+- DeepSeek multi-round tool result handoff
+- Structured plan synthesis and invalid-output rejection
+- Mock Tool allowlisting and approval proposal boundaries
+- Live-provider fallback behavior
 
 ## Built-in Demo Scenarios
 
@@ -433,6 +452,18 @@ Memory-aware Planning 是两步 Demo：先告诉 Agent“我不喜欢日程太�
 
 ```bash
 npm install
+```
+
+The application works in deterministic fallback mode without an API key. To enable the live DeepSeek path, create `.env.local` from `.env.example` and set the server-only variable:
+
+```text
+DEEPSEEK_API_KEY=your_key_here
+DEEPSEEK_MODEL=deepseek-flash
+```
+
+Then start the application:
+
+```bash
 npm run dev
 ```
 
@@ -443,6 +474,7 @@ Additional commands:
 ```bash
 npm run lint
 npm test
+npm run test:llm  # Requires DEEPSEEK_API_KEY and consumes API quota
 npm run build
 npm start
 ```
@@ -460,20 +492,25 @@ npm start
 
 FlowPilot 当前是一个 **AI Agent product prototype**，不是生产级 autonomous agent。
 
-- Agent 规划基于预设的 deterministic scenarios 和规则匹配，而非真实 LLM 动态推理；
+- Agent 支持真实 DeepSeek LLM 规划，但未配置 Key、超时或输出校验失败时会切换到 deterministic scenarios；
+- Live 模式会通过服务端 Adapter 将当前目标及经过数量、长度限制的 Memory/Tasks 上下文发送给 DeepSeek；API Key 不会进入浏览器；
 - Calendar、Task、Weather 和 Route Tools 均为 Mock Tools；
 - 没有连接真实 Calendar、Weather、Maps 或任务管理服务；
 - Evaluation 使用固定 Case、versioned fixture 和 deterministic evaluator，不是实时运行的 LLM-as-a-Judge；
 - Evaluation fixture 与用户本地 Tasks/Memory 隔离，不代表对当前个人数据进行在线评测；
 - Hard Constraint Validator 当前重点支持“不得早于某个时间”的 time-floor 场景，不是通用约束求解器；
 - 数据仅保存在当前浏览器的 localStorage，没有账号、云同步或服务端数据库；
-- 当前测试集中在 repository、planning、execution 和 evaluation 的纯逻辑层，没有端到端浏览器自动化测试。
+- 公开的 Agent Route 是原型级端点，已限制输入、工具范围、输出和调用轮数，但尚未接入生产级身份认证与持久化限流；
+- 默认测试使用模拟 Provider 响应；真实 DeepSeek 测试需要显式配置 Key，不属于稳定、无成本的默认测试套件；
+- 当前自动化测试集中在 repository、planning、execution、LLM adapter 和 evaluation 逻辑层，没有纳入持续运行的端到端浏览器测试。
 
 这些限制是有意的范围选择：先验证 Planning、Approval、Memory、Trace 和 Evaluation 的产品体验，再增加模型与外部服务复杂度。
 
 ## Future Exploration
 
-- Real LLM planner adapter
+- Streaming live-planning events
+- Additional model-provider adapters
+- Production authentication and rate limiting
 - Calendar, Weather, and Route integrations
 - General constraint solver
 - Semantic memory retrieval

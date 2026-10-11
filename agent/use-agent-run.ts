@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getScenario } from "@/agent/scenarios";
+import { requestAgentRun } from "@/agent/agent-client";
+import { runDeterministicAgent } from "@/agent/deterministic-adapter";
 import { executeTaskTool } from "@/agent/task-execution";
 import { inferMemoryFromPrompt } from "@/agent/memory-planning";
-import { memoryRepository, upsertInferredMemory } from "@/data/persistent-store";
-import type { AgentScenario, Approval, ChatMessage, PlanStep, ToolActivity } from "@/types/agent";
+import { memoryRepository, taskRepository, upsertInferredMemory } from "@/data/persistent-store";
+import type {
+  AgentRuntime,
+  AgentScenario,
+  Approval,
+  ChatMessage,
+  PlanStep,
+  ToolActivity,
+} from "@/types/agent";
 
 const STEP_DELAY = 720;
 
@@ -23,29 +31,70 @@ export function useAgentRun() {
   const [activities, setActivities] = useState<ToolActivity[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [runtime, setRuntime] = useState<AgentRuntime | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isRunning, setIsRunning] = useState(false);
   const runId = useRef(0);
   const activeRunId = useRef("");
   const resolvedApprovals = useRef(new Set<string>());
 
-  const startRun = useCallback((prompt: string) => {
+  const startRun = useCallback(async (prompt: string) => {
     runId.current += 1;
+    const currentRun = runId.current;
     activeRunId.current = `run_${Date.now()}_${runId.current}`;
     resolvedApprovals.current.clear();
     const inferredMemory = inferMemoryFromPrompt(prompt);
     if (inferredMemory) upsertInferredMemory(inferredMemory);
-    const selected = getScenario(prompt, memoryRepository.getSnapshot());
-    setScenario(selected);
-    setSteps(selected.steps.map((step) => ({ ...step, status: "pending" })));
+    const request = {
+      userInput: prompt,
+      memories: [...memoryRepository.getSnapshot()],
+      tasks: [...taskRepository.getSnapshot()],
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Shanghai",
+    };
+    setScenario(null);
+    setRuntime(null);
+    setSteps([
+      {
+        id: "live-connect",
+        title: "Connect to planning model",
+        description: "Send the goal and bounded local context through the server adapter.",
+        status: "running",
+      },
+      {
+        id: "live-memory",
+        title: "Read saved memory",
+        description: "Load preferences and hard constraints before planning.",
+        status: "pending",
+      },
+      {
+        id: "live-tools",
+        title: "Select tools and build plan",
+        description: "Use approved mock tools and prepare write actions for review.",
+        status: "pending",
+      },
+    ]);
     setActivities([]);
     setApprovals([]);
+    setMessages([{ id: `${currentRun}-user`, role: "user", content: prompt }]);
+    setActiveIndex(-1);
+    setIsRunning(true);
+
+    let result;
+    try {
+      result = await requestAgentRun(request);
+    } catch {
+      result = runDeterministicAgent(request, "The live Agent endpoint could not be reached.");
+    }
+    if (runId.current !== currentRun) return;
+
+    setRuntime(result.runtime);
+    setScenario(result.scenario);
+    setSteps(result.scenario.steps.map((step) => ({ ...step, status: "pending" })));
     setMessages([
-      { id: `${runId.current}-user`, role: "user", content: prompt },
-      { id: `${runId.current}-assistant`, role: "assistant", content: selected.response },
+      { id: `${currentRun}-user`, role: "user", content: prompt },
+      { id: `${currentRun}-assistant`, role: "assistant", content: result.scenario.response },
     ]);
     setActiveIndex(0);
-    setIsRunning(true);
   }, []);
 
   useEffect(() => {
@@ -137,6 +186,7 @@ export function useAgentRun() {
 
   return {
     scenario,
+    runtime,
     steps,
     activities,
     approvals,
